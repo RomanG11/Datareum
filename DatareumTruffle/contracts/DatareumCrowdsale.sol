@@ -214,7 +214,7 @@ contract DatareumCrowdsale is Ownable, usingOraclize{
 
     uint eleven = 1514847600; // Put the erliest 11pm timestamp
 
-    for (uint i = 0; i < 30; i++){
+    for (uint i = 0; i < 300; i++){
       eleven = eleven + 1 days;
       if(eleven > now){
         return eleven.sub(now);
