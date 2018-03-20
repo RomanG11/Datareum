@@ -42,7 +42,7 @@ contract DatareumToken is Ownable { //ERC - 20 token contract
     require(!locked);
     balances[msg.sender] = balances[msg.sender].sub(_amount);
     balances[_to] = balances[_to].add(_amount);
-    Transfer(msg.sender,_to,_amount);
+    emit Transfer(msg.sender,_to,_amount);
     return true;
   }
 
@@ -53,13 +53,13 @@ contract DatareumToken is Ownable { //ERC - 20 token contract
     balances[_from] = balances[_from].sub(_amount);
     allowed[_from][msg.sender] = allowed[_from][msg.sender].sub(_amount);
     balances[_to] = balances[_to].add(_amount);
-    Transfer(_from,_to,_amount);
+    emit Transfer(_from,_to,_amount);
     return true;
   }
   //standart ERC-20 function
   function approve(address _spender, uint256 _amount)public returns (bool success) { 
     allowed[msg.sender][_spender] = _amount;
-    Approval(msg.sender, _spender, _amount);
+    emit Approval(msg.sender, _spender, _amount);
     return true;
   }
 
@@ -69,16 +69,15 @@ contract DatareumToken is Ownable { //ERC - 20 token contract
   }
 
   //Constructor
-  function DatareumToken(address _founders, address _bounty) public {
-    require(_founders != address(0) && _bounty != address(0));
+  function DatareumToken() public {
     owner = msg.sender;
-    balances[this] = 600000000 ether;
+    balances[this] = _totalSupply;
     
-    balances[_founders] = 200000000 ether;
-    balances[_bounty] = 200000000 ether;
+    // balances[_founders] = 200000000 ether;
+    // balances[_bounty] = 200000000 ether;
     
-    Transfer(this, _founders, 200000000 ether);
-    Transfer(this, _bounty, 200000000 ether);
+    // Transfer(this, _founders, 200000000 ether);
+    // Transfer(this, _bounty, 200000000 ether);
   }
 
   address public crowdsaleContract;
@@ -88,6 +87,17 @@ contract DatareumToken is Ownable { //ERC - 20 token contract
 
     crowdsaleContract = _address;
   }
+
+  function endICO (uint _date) public {
+    require(msg.sender == crowdsaleContract);
+    balances[this] = balances[this].sub(crowdsaleBalance);
+    emit Transfer(this,0,crowdsaleBalance);
+    
+    crowdsaleBalance = 0;
+    finishDate = _date;
+  }
+
+  uint finishDate = 1893456000;
   
   uint public crowdsaleBalance = 600000000 ether;
   
@@ -99,6 +109,81 @@ contract DatareumToken is Ownable { //ERC - 20 token contract
     
     crowdsaleBalance = crowdsaleBalance.sub(_value);
     
-    Transfer(this,_address,_value);    
+    emit Transfer(this,_address,_value);    
+  }
+
+  uint public advisorsBalance = 200000000 ether;
+  uint public foundersBalance = 100000000 ether;
+  uint public futureFundingBalance = 50000000 ether;
+  uint public bountyBalance = 50000000 ether;
+
+  function sendAdvisorsBalance (address[] _addresses, uint[] _values) public onlyOwner {
+    require(crowdsaleBalance == 0);
+    uint buffer = 0;
+    for(uint i = 0; i < _addresses.length; i++){
+      balances[_addresses[i]] = balances[_addresses[i]].add(_values[i]);
+      buffer = buffer.add(_values[i]);
+      emit Transfer(this,_addresses[i],_values[i]);
+    }
+    advisorsBalance = advisorsBalance.sub(buffer);
+    balances[this] = balances[this].sub(buffer);
+  }
+  
+  function sendFoundersBalance (address[] _addresses, uint[] _values) public onlyOwner {
+    require(crowdsaleBalance == 0);
+    require(now > finishDate + 1 years);
+
+    uint buffer = 0;
+    for(uint i = 0; i < _addresses.length; i++){
+      balances[_addresses[i]] = balances[_addresses[i]].add(_values[i]);
+      buffer = buffer.add(_values[i]);
+      emit Transfer(this,_addresses[i],_values[i]);
+    }
+    foundersBalance = foundersBalance.sub(buffer);
+    balances[this] = balances[this].sub(buffer);
+  }
+
+  function sendFutureFundingBalance (address[] _addresses, uint[] _values) public onlyOwner {
+    require(crowdsaleBalance == 0);
+    require(now > finishDate + 2 years);
+
+    uint buffer = 0;
+    for(uint i = 0; i < _addresses.length; i++){
+      balances[_addresses[i]] = balances[_addresses[i]].add(_values[i]);
+      buffer = buffer.add(_values[i]);
+      emit Transfer(this,_addresses[i],_values[i]);
+    }
+    futureFundingBalance = futureFundingBalance.sub(buffer);
+    balances[this] = balances[this].sub(buffer);
+  }
+
+  uint public constant PRE_ICO_FINISH = 1525564740;
+
+  mapping (address => bool) bountyAddresses;
+
+  function addBountyAddresses (address[] _addresses) public onlyOwner {
+    for (uint i = 0; i < _addresses.length; i++){
+      bountyAddresses[_addresses[i]] = true;
+    }
+  }
+
+  function removeBountyAddresses (address[] _addresses) public onlyOwner {
+    for (uint i = 0; i < _addresses.length; i++){
+      bountyAddresses[_addresses[i]] = false;
+    }
+  }
+
+  function sendBountyBalance (address[] _addresses, uint[] _values) public {
+    require(now >= PRE_ICO_FINISH);
+    require (bountyAddresses[msg.sender]);
+
+    uint buffer = 0;
+    for(uint i = 0; i < _addresses.length; i++){
+      balances[_addresses[i]] = balances[_addresses[i]].add(_values[i]);
+      buffer = buffer.add(_values[i]);
+      emit Transfer(this,_addresses[i],_values[i]);
+    }
+    bountyBalance = bountyBalance.sub(buffer);
+    balances[this] = balances[this].sub(buffer);
   }
 }
