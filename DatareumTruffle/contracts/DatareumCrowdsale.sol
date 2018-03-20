@@ -144,14 +144,21 @@ contract DatareumCrowdsale is Ownable, usingOraclize{
     if(funders[_address].active && _value >= funders[_address].amount){
       uint bufferTokens = funders[_address].amount.mul((uint)(10).pow(decimals)/tokenPrice);
       bufferTokens = bufferTokens.add(bufferTokens.mul(funders[_address].bonus)/100);
+
+      uint bufferEth = _value.sub(funders[_address].amount);
+      bufferTokens = bufferTokens.add(bufferEth.mul((uint)(10).pow(decimals))/100); 
+
       token.sendCrowdsaleTokens(_address,bufferTokens);
       
-      ethCollected = ethCollected.add(funders[_address].amount);
-      _value = _value.sub(funders[_address].amount);
+      ethCollected = ethCollected.add(_value);
 
-      if (ethCollected > ICO_MIN_CAP){
+      if (ethCollected >= ICO_MIN_CAP){
         distributionAddress.transfer(address(this).balance.sub(oraclizeBalance));
       }
+      funders[_address].active = false;
+
+      emit OnSuccessBuy(_address, _value, 0, bufferTokens);
+      return true;
     }
 
 
@@ -183,7 +190,7 @@ contract DatareumCrowdsale is Ownable, usingOraclize{
 
       tokensToSend = tokensToSend.add(tokensToSend.mul(bonusPercent)/100);
 
-      if (ethCollected > ICO_MIN_CAP){
+      if (ethCollected >= ICO_MIN_CAP){
         distributionAddress.transfer(address(this).balance.sub(oraclizeBalance));
       }
     }
