@@ -1,4 +1,4 @@
-pragma solidity ^0.4.19;
+pragma solidity ^0.4.20;
 import "./Oraclize.sol";
 import "./Ownable.sol";
 import "./SafeMath.sol";
@@ -43,9 +43,10 @@ contract DatareumCrowdsale is Ownable, usingOraclize{
 
     oraclizeBalance = msg.value;
     
-    uint eleven = 1521111900; // Put the erliest 11pm timestamp
+    uint eleven = 1521586800; // Put the erliest 11pm timestamp
     
-    startOraclize(findElevenPmUtc(eleven));
+    updateFlag = true;
+    oraclize_query((findElevenPmUtc(eleven)),"URL", "json(https://api.kraken.com/0/public/Ticker?pair=ETHUSD).result.XETHZUSD.c.0");
     oraclizeBalance = oraclizeBalance.add(oraclize_getPrice("URL"));
   }
 
@@ -62,11 +63,9 @@ contract DatareumCrowdsale is Ownable, usingOraclize{
   
 
   //PRE ICO CONSTANTS
-  uint public constant PRE_ICO_MIN_DEPOSIT = 1 ether; //5 ether
-  // uint public constant PRE_ICO_MAX_DEPOSIT = 100 ether;
+  uint public constant PRE_ICO_MIN_DEPOSIT = 1 ether; 
 
   uint public constant PRE_ICO_MIN_CAP = 0;
-  // uint public constant PRE_ICO_MAX_CAP = 2000000 ether;
   uint public PRE_ICO_MAX_CAP = startingExchangePrice.mul((uint)(2000000)); //2 000 000 USD
 
   uint public constant PRE_ICO_START = 0; //1524916800
@@ -204,15 +203,14 @@ contract DatareumCrowdsale is Ownable, usingOraclize{
 
   function tokenCalculate (uint _value) public view returns(uint)  {
     uint bonusPercent;
-    uint8 currentPhase = getPhase(now);
     uint tokensToSend = (_value.mul((uint)(10).pow(decimals))/tokenPrice);
 
-    if (currentPhase == 1){
+    if (now < PRE_ICO_FINISH){
       require (_value >= PRE_ICO_MIN_DEPOSIT);
 
       bonusPercent = getPreIcoBonus(_value);
       tokensToSend = tokensToSend.add(tokensToSend.mul(bonusPercent)/100);
-    }else if(currentPhase == 2){
+    }else if(now >= PRE_ICO_FINISH){
       require (_value >= ICO_MIN_DEPOSIT);
 
       bonusPercent = getIcoBonus();
@@ -222,11 +220,9 @@ contract DatareumCrowdsale is Ownable, usingOraclize{
   }
   
   function manualSendTokens (address _address, uint _value) public onlyOwnerOrSubOwners {
-    token.sendCrowdsaleTokens(_address,_value);
+    token.sendCrowdsaleTokens(_address,_value.mul((uint)(10).pow(decimals))/tokenPrice);
     ethCollected = ethCollected.add(_value);
   }
-  
-
   
   uint public priceUpdateAt = 0;
   
@@ -257,7 +253,7 @@ contract DatareumCrowdsale is Ownable, usingOraclize{
   bool public updateFlag = false;
   
   function update() internal {
-    oraclize_query(60,"URL", "json(https://api.kraken.com/0/public/Ticker?pair=ETHUSD).result.XETHZUSD.c.0");
+    oraclize_query(86400,"URL", "json(https://api.kraken.com/0/public/Ticker?pair=ETHUSD).result.XETHZUSD.c.0");
     //86400 - 1 day
   
     oraclizeBalance = oraclizeBalance.sub(oraclize_getPrice("URL")); //request to oraclize
@@ -316,22 +312,26 @@ contract DatareumCrowdsale is Ownable, usingOraclize{
     token.endICO();
   }
   
-  mapping (address => bool) subOwners;
+  mapping (address => bool) public subOwners;
   modifier onlyOwnerOrSubOwners() { 
     require (subOwners[msg.sender] || msg.sender == owner); 
     _; 
   }
   
-
   struct Funder {
     uint amount;
     uint bonus;
     bool active;
   }
   
-  mapping (address => Funder) funders;
+  mapping (address => Funder) public funders;
 
-
-  
-  
+  function addFunder (address _address, uint _amount, uint _bonus) public onlyOwnerOrSubOwners {
+    funders[_address] = Funder(_amount,_bonus,true);
+  }
+  function removeFunder (address _address) public onlyOwnerOrSubOwners {
+    Funder memory buffer = funders[_address];
+    buffer.active = false;
+    funders[_address] = buffer;
+  }
 }

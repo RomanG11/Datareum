@@ -1,7 +1,64 @@
 pragma solidity ^0.4.20;
 
-import "./Ownable.sol";
-import "./SafeMath.sol";
+//standart library for uint
+library SafeMath { 
+  function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+    if (a == 0 || b == 0){
+        return 0;
+    }
+    uint256 c = a * b;
+    assert(c / a == b);
+    return c;
+  }
+
+  function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+    assert(b <= a);
+    return a - b;
+  }
+
+  function add(uint256 a, uint256 b) internal pure returns (uint256) {
+    uint256 c = a + b;
+    assert(c >= a);
+    return c;
+  }
+
+  function pow(uint256 a, uint256 b) internal pure returns (uint256){ //power function
+    if (b == 0){
+      return 1;
+    }
+    uint256 c = a**b;
+    assert (c >= a);
+    return c;
+  }
+}
+
+//standart contract to identify owner
+contract Ownable {
+
+  address public owner;
+
+  address public newOwner;
+
+  modifier onlyOwner() {
+    require(msg.sender == owner);
+    _;
+  }
+
+  function Ownable() public {
+    owner = msg.sender;
+  }
+
+  function transferOwnership(address _newOwner) public onlyOwner {
+    require(_newOwner != address(0));
+    newOwner = _newOwner;
+  }
+
+  function acceptOwnership() public {
+    if (msg.sender == newOwner) {
+      owner = newOwner;
+    }
+  }
+}
 
 contract DatareumToken is Ownable { //ERC - 20 token contract
   using SafeMath for uint;
